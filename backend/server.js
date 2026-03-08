@@ -92,6 +92,38 @@ app.get('/', (req, res) => {
     res.send('API is running...');
 });
 
+// Remote Database Seeding Endpoint
+import bcrypt from 'bcryptjs';
+app.post('/api/seed-db', async (req, res) => {
+    try {
+        const { secret } = req.body;
+        if (secret !== process.env.JWT_SECRET) {
+            return res.status(403).json({ message: "Unauthorized: Invalid secret key." });
+        }
+
+        await sequelize.sync();
+        const existingAdmin = await User.findOne({ where: { email: 'admin@nit.edu.in' } });
+
+        if (existingAdmin) {
+            return res.status(200).json({ message: "Database already seeded. Admin exists." });
+        }
+
+        const passwordHash = await bcrypt.hash('password123', 10);
+        await User.create({
+            name: 'Admin User',
+            email: 'admin@nit.edu.in',
+            password: passwordHash,
+            role: 'admin',
+            avatar: ''
+        });
+
+        res.status(200).json({ message: "Database seeded successfully with admin account! Password: password123" });
+    } catch (error) {
+        console.error('Seeding error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // Database Connection and Server Start
 const startServer = async () => {
     try {
